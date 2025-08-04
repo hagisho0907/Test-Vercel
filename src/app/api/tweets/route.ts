@@ -28,13 +28,38 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Creating Twitter client...');
     const twitterClient = new TwitterClient(bearerToken);
-    const query = `#${hashtag} -is:retweet lang:en`;
-    console.log('Searching for tweets with query:', query);
     
-    const tweets = await twitterClient.searchTweets(query, maxResults);
-    console.log('Successfully fetched tweets:', tweets.length);
+    // Try multiple query variations to increase chances of finding results
+    const queries = [
+      `#${hashtag} -is:retweet`,           // Remove language restriction
+      `#${hashtag}`,                       // Most basic query
+      `${hashtag} -is:retweet`,            // Without # prefix
+      `#${hashtag} -is:retweet lang:ja`,   // Japanese language
+      `#${hashtag} -is:retweet lang:en`    // English language (original)
+    ];
     
-    return NextResponse.json({ tweets });
+    console.log('Trying multiple query variations for hashtag:', hashtag);
+    
+    for (const query of queries) {
+      console.log('Searching for tweets with query:', query);
+      try {
+        const tweets = await twitterClient.searchTweets(query, maxResults);
+        console.log('Query result:', query, '- tweets found:', tweets.length);
+        
+        if (tweets.length > 0) {
+          console.log('Successfully fetched tweets with query:', query);
+          return NextResponse.json({ tweets, query_used: query });
+        }
+      } catch (queryError) {
+        console.log('Query failed:', query, 'Error:', queryError);
+        continue; // Try next query
+      }
+    }
+    
+    // If no queries returned results, return empty array
+    console.log('No tweets found with any query variation');
+    return NextResponse.json({ tweets: [], message: 'No tweets found for this hashtag' });
+    
   } catch (error) {
     console.error('Error fetching tweets:', error);
     return NextResponse.json({ 

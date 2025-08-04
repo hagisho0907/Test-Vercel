@@ -103,6 +103,7 @@ class TwitterClient {
 
     const data = await response.json();
     console.log('Response data keys:', Object.keys(data));
+    console.log('Response data:', JSON.stringify(data, null, 2));
     return data;
   }
 
@@ -125,14 +126,30 @@ class TwitterClient {
   }
 
   private processTweets(response: TwitterApiResponse): ProcessedTweet[] {
-    if (!response.data) return [];
+    console.log('Processing tweets...');
+    console.log('Response data length:', response.data?.length || 0);
+    console.log('Response includes users length:', response.includes?.users?.length || 0);
+    
+    if (!response.data) {
+      console.log('No data in response, returning empty array');
+      return [];
+    }
 
     const users = response.includes?.users || [];
     const userMap = new Map(users.map(user => [user.id, user]));
+    console.log('User map created with', userMap.size, 'users');
 
-    return response.data.map(tweet => {
+    const processedTweets = response.data.map(tweet => {
       const author = userMap.get(tweet.author_id);
       const hashtags = tweet.entities?.hashtags?.map(tag => tag.tag) || [];
+      
+      console.log('Processing tweet:', {
+        id: tweet.id,
+        author_id: tweet.author_id,
+        author_name: author?.name,
+        hashtags,
+        text_length: tweet.text.length
+      });
       
       return {
         id: tweet.id,
@@ -146,6 +163,9 @@ class TwitterClient {
         profileImage: author?.profile_image_url,
       };
     });
+
+    console.log('Processed tweets count:', processedTweets.length);
+    return processedTweets;
   }
 
   private formatTimestamp(createdAt: string): string {

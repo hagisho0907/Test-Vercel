@@ -140,7 +140,14 @@ export default function Home() {
         throw new Error(data.error || 'Failed to fetch tweets');
       }
       
-      setTweets(data.tweets);
+      if (data.tweets && data.tweets.length > 0) {
+        setTweets(data.tweets);
+        console.log('Tweets loaded:', data.tweets.length, 'Query used:', data.query_used);
+      } else {
+        setTweets([]);
+        setError(`No tweets found for hashtag #${hashtag}. ${data.message || 'Try a different hashtag.'}`);
+        console.log('No tweets found for hashtag:', hashtag);
+      }
       setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -356,8 +363,33 @@ export default function Home() {
           </div>
         )}
 
+        {!loading && useRealData && filteredTweets.length === 0 && selectedHashtag && !error && (
+          <div className="text-center py-12">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-8 max-w-md mx-auto">
+              <div className="text-4xl mb-4">🔍</div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                No tweets found
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                No recent tweets found for #{selectedHashtag}. This could mean:
+              </p>
+              <ul className="text-left text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                <li>• The hashtag hasn't been used recently</li>
+                <li>• The hashtag is misspelled</li>
+                <li>• Posts are in a different language</li>
+                <li>• Most posts are retweets (filtered out)</li>
+              </ul>
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  💡 Try switching to Mock Data mode or use a different hashtag
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          {!loading && filteredTweets.map(tweet => (
+          {!loading && filteredTweets.length > 0 && filteredTweets.map(tweet => (
             <div
               key={tweet.id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
