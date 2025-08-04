@@ -374,7 +374,7 @@ export default function Home() {
                 No recent tweets found for #{selectedHashtag}. This could mean:
               </p>
               <ul className="text-left text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                <li>• The hashtag hasn't been used recently</li>
+                <li>• The hashtag hasn&apos;t been used recently</li>
                 <li>• The hashtag is misspelled</li>
                 <li>• Posts are in a different language</li>
                 <li>• Most posts are retweets (filtered out)</li>
