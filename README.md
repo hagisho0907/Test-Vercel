@@ -80,6 +80,26 @@ The app works in two modes:
 - **Mock Mode**: No API keys required, uses sample data
 - **Live Mode**: Requires X API Bearer Token in environment variables
 
+### Rate Limits
+
+X API v2 has the following rate limits for the free tier:
+
+- **Search tweets**: 300 requests per 15 minutes
+- **Rate limit resets**: Every 15 minutes
+
+If you encounter a "Rate Limit Exceeded" error:
+1. Wait for the rate limit to reset (shown in error message)
+2. Switch back to Mock Data mode for continued development
+3. Consider upgrading to a paid X API plan for higher limits
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **"Rate Limit Exceeded"**: Wait 15 minutes or use Mock Data mode
+2. **"Invalid Bearer Token"**: Check your token in `.env.local`
+3. **"Access Forbidden"**: Verify your X API plan supports the search endpoint
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 ## Learn More

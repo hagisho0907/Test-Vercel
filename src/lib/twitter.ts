@@ -75,7 +75,24 @@ class TwitterClient {
       try {
         const errorBody = await response.text();
         console.log('Error response body:', errorBody);
-        errorMessage += ` - ${errorBody}`;
+        
+        if (response.status === 429) {
+          const resetTime = response.headers.get('x-rate-limit-reset');
+          const remaining = response.headers.get('x-rate-limit-remaining');
+          console.log('Rate limit info:', { resetTime, remaining });
+          
+          errorMessage = 'X API rate limit exceeded. The free tier allows 300 requests per 15 minutes. Please wait before making more requests.';
+          if (resetTime) {
+            const resetDate = new Date(parseInt(resetTime) * 1000);
+            errorMessage += ` Rate limit resets at: ${resetDate.toLocaleTimeString()}`;
+          }
+        } else if (response.status === 401) {
+          errorMessage = 'Invalid or expired Bearer Token. Please check your X API credentials.';
+        } else if (response.status === 403) {
+          errorMessage = 'Access forbidden. Your X API plan may not support this endpoint.';
+        } else {
+          errorMessage += ` - ${errorBody}`;
+        }
       } catch (e) {
         console.log('Could not read error response body');
       }

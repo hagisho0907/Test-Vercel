@@ -164,9 +164,16 @@ export default function Home() {
                 {useRealData ? '🔴 Live Data' : '📝 Mock Data'}
               </button>
               {useRealData && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
-                  Using X API v2
-                </p>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Using X API v2
+                  </p>
+                  {error && error.includes('rate limit') && (
+                    <p className="text-xs text-orange-500 dark:text-orange-400 mt-1">
+                      ⚠️ Rate Limited
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -198,11 +205,24 @@ export default function Home() {
 
           {error && (
             <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+                <div className="flex-1">
+                  <p className="text-red-800 dark:text-red-200 text-sm font-medium mb-1">
+                    {error.includes('rate limit') ? '⏱️ Rate Limit Exceeded' : '❌ API Error'}
+                  </p>
+                  <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+                  {error.includes('rate limit') && (
+                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-800 rounded border border-red-200 dark:border-red-600">
+                      <p className="text-red-800 dark:text-red-200 text-xs">
+                        <strong>💡 Tip:</strong> X API free tier allows 300 requests per 15 minutes. 
+                        Try switching back to Mock Data mode or wait before making more requests.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
