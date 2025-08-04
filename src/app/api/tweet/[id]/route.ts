@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const tweetId = params.id;
+  const { id: tweetId } = await params;
   console.log('Fetching specific tweet ID:', tweetId);
 
   const bearerToken = process.env.TWITTER_BEARER_TOKEN;

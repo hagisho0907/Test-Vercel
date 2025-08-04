@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 
 interface Tweet {
@@ -179,7 +179,7 @@ export default function Home() {
     }
   };
 
-  const fetchRateLimitInfo = async () => {
+  const fetchRateLimitInfo = useCallback(async () => {
     if (!useRealData) return;
     
     try {
@@ -200,7 +200,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error fetching rate limit info:', error);
     }
-  };
+  }, [useRealData]);
 
   const toggleDataSource = () => {
     setUseRealData(!useRealData);
@@ -220,7 +220,7 @@ export default function Home() {
     if (useRealData) {
       fetchRateLimitInfo();
     }
-  }, [useRealData]);
+  }, [useRealData, fetchRateLimitInfo]);
 
   // Auto-update rate limit info every 30 seconds when using live data
   useEffect(() => {
@@ -231,7 +231,7 @@ export default function Home() {
     }, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
-  }, [useRealData]);
+  }, [useRealData, fetchRateLimitInfo]);
 
   // Update countdown timer every minute
   useEffect(() => {
