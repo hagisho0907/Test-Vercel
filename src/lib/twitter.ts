@@ -59,6 +59,7 @@ class TwitterClient {
 
   private async makeRequest(endpoint: string, params: URLSearchParams): Promise<TwitterApiResponse> {
     const url = `${this.baseUrl}${endpoint}?${params.toString()}`;
+    console.log('Making request to:', url);
     
     const response = await fetch(url, {
       headers: {
@@ -67,11 +68,23 @@ class TwitterClient {
       },
     });
 
+    console.log('Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`Twitter API error: ${response.status} ${response.statusText}`);
+      let errorMessage = `Twitter API error: ${response.status} ${response.statusText}`;
+      try {
+        const errorBody = await response.text();
+        console.log('Error response body:', errorBody);
+        errorMessage += ` - ${errorBody}`;
+      } catch (e) {
+        console.log('Could not read error response body');
+      }
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('Response data keys:', Object.keys(data));
+    return data;
   }
 
   async searchTweets(query: string, maxResults: number = 20): Promise<ProcessedTweet[]> {
