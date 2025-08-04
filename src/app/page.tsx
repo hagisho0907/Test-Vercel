@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 interface Tweet {
@@ -66,6 +66,11 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [useRealData, setUseRealData] = useState<boolean>(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    isLimited: boolean;
+    resetTime: Date | null;
+    minutesLeft: number;
+  }>({ isLimited: false, resetTime: null, minutesLeft: 0 });
   
   const defaultHashtags = Array.from(new Set(mockTweets.flatMap(tweet => tweet.hashtags)));
   const allHashtags = [...defaultHashtags, ...customHashtags];
@@ -100,16 +105,33 @@ export default function Home() {
     
     setLoading(true);
     setError(null);
+    setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
     
     try {
       const response = await fetch(`/api/tweets?hashtag=${encodeURIComponent(hashtag)}&max_results=20`);
       const data = await response.json();
       
       if (!response.ok) {
+        // Check if it's a rate limit error and extract reset time
+        if (data.details && data.details.includes('Rate limit resets in')) {
+          const resetMatch = data.details.match(/Rate limit resets in (\d+) minutes \(at ([^)]+)\)/);
+          if (resetMatch) {
+            const minutesLeft = parseInt(resetMatch[1]);
+            const resetTime = new Date();
+            resetTime.setMinutes(resetTime.getMinutes() + minutesLeft);
+            
+            setRateLimitInfo({
+              isLimited: true,
+              resetTime: resetTime,
+              minutesLeft: minutesLeft
+            });
+          }
+        }
         throw new Error(data.error || 'Failed to fetch tweets');
       }
       
       setTweets(data.tweets);
+      setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setTweets(mockTweets); // Fall back to mock data
@@ -136,8 +158,29 @@ export default function Home() {
       // Switching back to mock data
       setTweets(mockTweets);
       setError(null);
+      setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
     }
   };
+
+  // Update countdown timer every minute
+  useEffect(() => {
+    if (!rateLimitInfo.isLimited || !rateLimitInfo.resetTime) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const minutesLeft = Math.max(0, Math.ceil((rateLimitInfo.resetTime!.getTime() - now.getTime()) / (1000 * 60)));
+      
+      if (minutesLeft <= 0) {
+        // Rate limit has reset
+        setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
+        setError(null);
+      } else {
+        setRateLimitInfo(prev => ({ ...prev, minutesLeft }));
+      }
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [rateLimitInfo.isLimited, rateLimitInfo.resetTime]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -168,10 +211,18 @@ export default function Home() {
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Using X API v2
                   </p>
-                  {error && error.includes('rate limit') && (
-                    <p className="text-xs text-orange-500 dark:text-orange-400 mt-1">
-                      ⚠️ Rate Limited
-                    </p>
+                  {rateLimitInfo.isLimited && (
+                    <div className="mt-1 space-y-1">
+                      <p className="text-xs text-orange-500 dark:text-orange-400">
+                        ⚠️ Rate Limited
+                      </p>
+                      {rateLimitInfo.resetTime && (
+                        <div className="text-xs text-gray-600 dark:text-gray-300">
+                          <p>Resets: {rateLimitInfo.resetTime.toLocaleTimeString()}</p>
+                          <p>({rateLimitInfo.minutesLeft} min left)</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -216,10 +267,20 @@ export default function Home() {
                   <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
                   {error.includes('rate limit') && (
                     <div className="mt-3 p-3 bg-red-50 dark:bg-red-800 rounded border border-red-200 dark:border-red-600">
-                      <p className="text-red-800 dark:text-red-200 text-xs">
+                      <p className="text-red-800 dark:text-red-200 text-xs mb-2">
                         <strong>💡 Tip:</strong> X API free tier allows 300 requests per 15 minutes. 
                         Try switching back to Mock Data mode or wait before making more requests.
                       </p>
+                      {rateLimitInfo.isLimited && rateLimitInfo.resetTime && (
+                        <div className="border-t border-red-300 dark:border-red-600 pt-2 mt-2">
+                          <p className="text-red-800 dark:text-red-200 text-xs font-medium">
+                            ⏰ Rate limit resets at: {rateLimitInfo.resetTime.toLocaleString()}
+                          </p>
+                          <p className="text-red-700 dark:text-red-300 text-xs">
+                            Time remaining: {rateLimitInfo.minutesLeft} minutes
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
