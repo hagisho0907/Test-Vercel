@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface Tweet {
   id: string;
@@ -11,6 +12,7 @@ interface Tweet {
   timestamp: string;
   likes: number;
   retweets: number;
+  profileImage?: string;
 }
 
 const mockTweets: Tweet[] = [
@@ -60,13 +62,17 @@ export default function Home() {
   const [selectedHashtag, setSelectedHashtag] = useState<string>('');
   const [customHashtags, setCustomHashtags] = useState<string[]>([]);
   const [newHashtag, setNewHashtag] = useState<string>('');
+  const [tweets, setTweets] = useState<Tweet[]>(mockTweets);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [useRealData, setUseRealData] = useState<boolean>(false);
   
   const defaultHashtags = Array.from(new Set(mockTweets.flatMap(tweet => tweet.hashtags)));
   const allHashtags = [...defaultHashtags, ...customHashtags];
   
   const filteredTweets = selectedHashtag 
-    ? mockTweets.filter(tweet => tweet.hashtags.includes(selectedHashtag))
-    : mockTweets;
+    ? tweets.filter(tweet => tweet.hashtags.includes(selectedHashtag))
+    : tweets;
 
   const addCustomHashtag = () => {
     if (newHashtag.trim() && !allHashtags.includes(newHashtag.trim())) {
@@ -89,16 +95,81 @@ export default function Home() {
     }
   };
 
+  const fetchTweets = async (hashtag: string) => {
+    if (!useRealData) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/tweets?hashtag=${encodeURIComponent(hashtag)}&max_results=20`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch tweets');
+      }
+      
+      setTweets(data.tweets);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setTweets(mockTweets); // Fall back to mock data
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHashtagSelect = (hashtag: string) => {
+    setSelectedHashtag(hashtag);
+    if (hashtag && useRealData) {
+      fetchTweets(hashtag);
+    } else if (!hashtag) {
+      setTweets(mockTweets); // Show all mock tweets when "All" is selected
+    }
+  };
+
+  const toggleDataSource = () => {
+    setUseRealData(!useRealData);
+    if (!useRealData && selectedHashtag) {
+      // Switching to real data and there's a selected hashtag
+      fetchTweets(selectedHashtag);
+    } else {
+      // Switching back to mock data
+      setTweets(mockTweets);
+      setError(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            X Hashtag Curator
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Discover and explore trending posts by hashtags
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                X Hashtag Curator
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300 mt-2">
+                Discover and explore trending posts by hashtags
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={toggleDataSource}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  useRealData
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {useRealData ? '🔴 Live Data' : '📝 Mock Data'}
+              </button>
+              {useRealData && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
+                  Using X API v2
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -125,9 +196,20 @@ export default function Home() {
             </button>
           </div>
 
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setSelectedHashtag('')}
+              onClick={() => handleHashtagSelect('')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 !selectedHashtag
                   ? 'bg-blue-500 text-white'
@@ -139,7 +221,7 @@ export default function Home() {
             {defaultHashtags.map(hashtag => (
               <button
                 key={hashtag}
-                onClick={() => setSelectedHashtag(hashtag)}
+                onClick={() => handleHashtagSelect(hashtag)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   selectedHashtag === hashtag
                     ? 'bg-blue-500 text-white'
@@ -159,7 +241,7 @@ export default function Home() {
                 }`}
               >
                 <button
-                  onClick={() => setSelectedHashtag(hashtag)}
+                  onClick={() => handleHashtagSelect(hashtag)}
                   className="flex-1"
                 >
                   #{hashtag}
@@ -176,18 +258,35 @@ export default function Home() {
           </div>
         </div>
 
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <span className="ml-3 text-gray-600 dark:text-gray-300">Loading tweets...</span>
+          </div>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          {filteredTweets.map(tweet => (
+          {!loading && filteredTweets.map(tweet => (
             <div
               key={tweet.id}
               className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
             >
               <div className="flex items-start space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">
-                    {tweet.username.charAt(0)}
-                  </span>
-                </div>
+                {tweet.profileImage ? (
+                  <Image
+                    src={tweet.profileImage}
+                    alt={`${tweet.username} profile`}
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">
+                      {tweet.username.charAt(0)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
                     <h3 className="font-semibold text-gray-900 dark:text-white">
