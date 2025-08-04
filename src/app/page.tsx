@@ -90,7 +90,9 @@ export default function Home() {
     isLimited: boolean;
     resetTime: Date | null;
     minutesLeft: number;
-  }>({ isLimited: false, resetTime: null, minutesLeft: 0 });
+    limit: number;
+    remaining: number;
+  }>({ isLimited: false, resetTime: null, minutesLeft: 0, limit: 0, remaining: 0 });
   
   const defaultHashtags = Array.from(new Set(mockTweets.flatMap(tweet => tweet.hashtags)));
   const allHashtags = [...defaultHashtags, ...customHashtags];
@@ -125,7 +127,7 @@ export default function Home() {
     
     setLoading(true);
     setError(null);
-    setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
+    setRateLimitInfo(prev => ({ ...prev, isLimited: false }));
     
     try {
       const response = await fetch(`/api/tweets?hashtag=${encodeURIComponent(hashtag)}&max_results=20`);
@@ -140,11 +142,12 @@ export default function Home() {
             const resetTime = new Date();
             resetTime.setMinutes(resetTime.getMinutes() + minutesLeft);
             
-            setRateLimitInfo({
+            setRateLimitInfo(prev => ({
+              ...prev,
               isLimited: true,
               resetTime: resetTime,
               minutesLeft: minutesLeft
-            });
+            }));
           }
         }
         throw new Error(data.error || 'Failed to fetch tweets');
@@ -158,7 +161,7 @@ export default function Home() {
         setError(`No tweets found for hashtag #${hashtag}. ${data.message || 'Try a different hashtag.'}`);
         console.log('No tweets found for hashtag:', hashtag);
       }
-      setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
+      setRateLimitInfo(prev => ({ ...prev, isLimited: false }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setTweets(mockTweets); // Fall back to mock data
@@ -176,6 +179,29 @@ export default function Home() {
     }
   };
 
+  const fetchRateLimitInfo = async () => {
+    if (!useRealData) return;
+    
+    try {
+      const response = await fetch('/api/rate-limit');
+      const data = await response.json();
+      
+      if (response.ok) {
+        const resetTime = data.resetTime ? new Date(data.resetTime) : null;
+        setRateLimitInfo(prev => ({
+          ...prev,
+          limit: data.limit,
+          remaining: data.remaining,
+          isLimited: data.isLimited,
+          resetTime: resetTime,
+          minutesLeft: data.minutesLeft
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching rate limit info:', error);
+    }
+  };
+
   const toggleDataSource = () => {
     setUseRealData(!useRealData);
     if (!useRealData && selectedHashtag) {
@@ -185,9 +211,27 @@ export default function Home() {
       // Switching back to mock data
       setTweets(mockTweets);
       setError(null);
-      setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
+      setRateLimitInfo(prev => ({ ...prev, isLimited: false }));
     }
   };
+
+  // Fetch rate limit info when switching to live data
+  useEffect(() => {
+    if (useRealData) {
+      fetchRateLimitInfo();
+    }
+  }, [useRealData]);
+
+  // Auto-update rate limit info every 30 seconds when using live data
+  useEffect(() => {
+    if (!useRealData) return;
+
+    const interval = setInterval(() => {
+      fetchRateLimitInfo();
+    }, 30000); // Update every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [useRealData]);
 
   // Update countdown timer every minute
   useEffect(() => {
@@ -199,7 +243,7 @@ export default function Home() {
       
       if (minutesLeft <= 0) {
         // Rate limit has reset
-        setRateLimitInfo({ isLimited: false, resetTime: null, minutesLeft: 0 });
+        setRateLimitInfo(prev => ({ ...prev, isLimited: false, resetTime: null, minutesLeft: 0 }));
         setError(null);
       } else {
         setRateLimitInfo(prev => ({ ...prev, minutesLeft }));
@@ -235,22 +279,43 @@ export default function Home() {
               </button>
               {useRealData && (
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                     Using X API v2
                   </p>
-                  {rateLimitInfo.isLimited && (
-                    <div className="mt-1 space-y-1">
-                      <p className="text-xs text-orange-500 dark:text-orange-400">
-                        ⚠️ Rate Limited
-                      </p>
-                      {rateLimitInfo.resetTime && (
-                        <div className="text-xs text-gray-600 dark:text-gray-300">
-                          <p>Resets: {rateLimitInfo.resetTime.toLocaleTimeString()}</p>
-                          <p>({rateLimitInfo.minutesLeft} min left)</p>
+                  
+                  {/* Rate Limit Display */}
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 min-w-[200px]">
+                    <div className="text-xs space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 dark:text-gray-300">Rate Limit:</span>
+                        <span className={`font-medium ${rateLimitInfo.isLimited ? 'text-red-500' : 'text-green-500'}`}>
+                          {rateLimitInfo.remaining || 0}/{rateLimitInfo.limit || 300}
+                        </span>
+                      </div>
+                      
+                      {rateLimitInfo.isLimited ? (
+                        <div className="border-t border-gray-200 dark:border-gray-600 pt-1">
+                          <p className="text-orange-500 dark:text-orange-400 font-medium">
+                            ⚠️ Rate Limited
+                          </p>
+                          {rateLimitInfo.resetTime && (
+                            <div className="text-gray-600 dark:text-gray-300">
+                              <p>Resets: {rateLimitInfo.resetTime.toLocaleTimeString()}</p>
+                              <p>({rateLimitInfo.minutesLeft} min left)</p>
+                            </div>
+                          )}
                         </div>
+                      ) : (
+                        rateLimitInfo.resetTime && (
+                          <div className="border-t border-gray-200 dark:border-gray-600 pt-1">
+                            <p className="text-gray-600 dark:text-gray-300">
+                              Next reset: {rateLimitInfo.resetTime.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        )
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>

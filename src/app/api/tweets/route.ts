@@ -34,8 +34,10 @@ export async function GET(request: NextRequest) {
       `#${hashtag} -is:retweet`,           // Remove language restriction
       `#${hashtag}`,                       // Most basic query
       `${hashtag} -is:retweet`,            // Without # prefix
+      `#${encodeURIComponent(hashtag)} -is:retweet`, // URL encoded
+      `%23${encodeURIComponent(hashtag)} -is:retweet`, // Encoded with #
       `#${hashtag} -is:retweet lang:ja`,   // Japanese language
-      `#${hashtag} -is:retweet lang:en`    // English language (original)
+      `#${hashtag} -is:retweet lang:en`    // English language
     ];
     
     console.log('Trying multiple query variations for hashtag:', hashtag);
