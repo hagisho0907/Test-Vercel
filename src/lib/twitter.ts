@@ -84,7 +84,9 @@ class TwitterClient {
           errorMessage = 'X API rate limit exceeded. The free tier allows 300 requests per 15 minutes. Please wait before making more requests.';
           if (resetTime) {
             const resetDate = new Date(parseInt(resetTime) * 1000);
-            errorMessage += ` Rate limit resets at: ${resetDate.toLocaleTimeString()}`;
+            const now = new Date();
+            const minutesLeft = Math.ceil((resetDate.getTime() - now.getTime()) / (1000 * 60));
+            errorMessage += ` Rate limit resets in ${minutesLeft} minutes (at ${resetDate.toLocaleTimeString()}).`;
           }
         } else if (response.status === 401) {
           errorMessage = 'Invalid or expired Bearer Token. Please check your X API credentials.';
