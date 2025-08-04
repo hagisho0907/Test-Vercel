@@ -60,11 +60,21 @@ const mockTweets: Tweet[] = [
     id: '5',
     username: 'Vercel Developer',
     handle: '@vercel_dev',
-    content: 'VercelでNext.jsアプリをデプロイしました！X API統合もバッチリ動いています。 #verceltest',
-    hashtags: ['verceltest'],
+    content: 'VercelでNext.jsアプリをデプロイしました！X API統合もバッチリ動いています。 #vercel #nextjs',
+    hashtags: ['vercel', 'nextjs'],
     timestamp: '1h',
     likes: 78,
     retweets: 12
+  },
+  {
+    id: '6',
+    username: 'Web Developer',
+    handle: '@webdev_pro',
+    content: 'Just shipped a new feature using React hooks! The developer experience keeps getting better. #react #webdev',
+    hashtags: ['react', 'webdev'],
+    timestamp: '3h',
+    likes: 156,
+    retweets: 34
   }
 ];
 
