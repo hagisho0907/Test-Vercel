@@ -93,7 +93,7 @@ class TwitterClient {
         } else {
           errorMessage += ` - ${errorBody}`;
         }
-      } catch (e) {
+      } catch {
         console.log('Could not read error response body');
       }
       throw new Error(errorMessage);
