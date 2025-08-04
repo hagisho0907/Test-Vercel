@@ -58,12 +58,36 @@ const mockTweets: Tweet[] = [
 
 export default function Home() {
   const [selectedHashtag, setSelectedHashtag] = useState<string>('');
+  const [customHashtags, setCustomHashtags] = useState<string[]>([]);
+  const [newHashtag, setNewHashtag] = useState<string>('');
   
-  const allHashtags = Array.from(new Set(mockTweets.flatMap(tweet => tweet.hashtags)));
+  const defaultHashtags = Array.from(new Set(mockTweets.flatMap(tweet => tweet.hashtags)));
+  const allHashtags = [...defaultHashtags, ...customHashtags];
   
   const filteredTweets = selectedHashtag 
     ? mockTweets.filter(tweet => tweet.hashtags.includes(selectedHashtag))
     : mockTweets;
+
+  const addCustomHashtag = () => {
+    if (newHashtag.trim() && !allHashtags.includes(newHashtag.trim())) {
+      const hashtag = newHashtag.trim().replace(/^#/, '');
+      setCustomHashtags([...customHashtags, hashtag]);
+      setNewHashtag('');
+    }
+  };
+
+  const removeCustomHashtag = (hashtagToRemove: string) => {
+    setCustomHashtags(customHashtags.filter(tag => tag !== hashtagToRemove));
+    if (selectedHashtag === hashtagToRemove) {
+      setSelectedHashtag('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      addCustomHashtag();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -83,6 +107,24 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
             Filter by Hashtag
           </h2>
+          
+          <div className="mb-4 flex gap-2">
+            <input
+              type="text"
+              value={newHashtag}
+              onChange={(e) => setNewHashtag(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Add custom hashtag (e.g., React, Design)"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={addCustomHashtag}
+              className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Add
+            </button>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedHashtag('')}
@@ -94,7 +136,7 @@ export default function Home() {
             >
               All
             </button>
-            {allHashtags.map(hashtag => (
+            {defaultHashtags.map(hashtag => (
               <button
                 key={hashtag}
                 onClick={() => setSelectedHashtag(hashtag)}
@@ -106,6 +148,30 @@ export default function Home() {
               >
                 #{hashtag}
               </button>
+            ))}
+            {customHashtags.map(hashtag => (
+              <div
+                key={hashtag}
+                className={`flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedHashtag === hashtag
+                    ? 'bg-green-500 text-white'
+                    : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800'
+                }`}
+              >
+                <button
+                  onClick={() => setSelectedHashtag(hashtag)}
+                  className="flex-1"
+                >
+                  #{hashtag}
+                </button>
+                <button
+                  onClick={() => removeCustomHashtag(hashtag)}
+                  className="ml-1 hover:text-red-500 transition-colors"
+                  title="Remove hashtag"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         </div>
